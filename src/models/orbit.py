@@ -19,19 +19,28 @@ class Orbit_Eq:
     k: float | None = None
     L: float | None = None
 
-    def calculate_max_rates(self, mu, thrust) -> np.ndarray:
-        adot_xx = 2*thrust*self.a*np.sqrt(self.a/mu)*np.sqrt((1+np.sqrt(self.f**2+self.g**2))/(1-np.sqrt(self.f**2+self.g**2)))
-        fdot_xx = 2*thrust*np.sqrt(np.sqrt(1+np.sqrt(self.f**2+self.g**2))/mu)
-        gdot_xx = fdot_xx
-        s2 = 1+self.h**2+self.k**2
-        hdot_xx = (fdot_xx/4)*s2/(self.f+np.sqrt(1-self.g**2))
-        kdot_xx = (fdot_xx/4)*s2/(self.g+np.sqrt(1-self.f**2))
+    def __init__(self, *args):
+        self.a, self.f, self.g, self.h, self.k, self.L = args
 
-        return np.array([adot_xx, fdot_xx, gdot_xx, hdot_xx, kdot_xx])
+    # def calculate_max_rates(self, mu, thrust) -> np.ndarray:
+    #     adot_xx = 2*thrust*self.a*np.sqrt(self.a/mu)*np.sqrt((1+np.sqrt(self.f**2+self.g**2))/(1-np.sqrt(self.f**2+self.g**2)))
+    #     fdot_xx = 2*thrust*np.sqrt(np.sqrt(1+np.sqrt(self.f**2+self.g**2))/mu)
+    #     gdot_xx = fdot_xx
+    #     s2 = 1+self.h**2+self.k**2
+    #     hdot_xx = (fdot_xx/4)*s2/(self.f+np.sqrt(1-self.g**2))
+    #     kdot_xx = (fdot_xx/4)*s2/(self.g+np.sqrt(1-self.f**2))
+
+    #     return np.array([adot_xx, fdot_xx, gdot_xx, hdot_xx, kdot_xx])
     
-    def calculate_error(self, target) -> np.ndarray:
-        return np.array([self.a - target.a,
-                         self.f - target.f,
-                         self.g - target.g,
-                         self.h - target.h,
-                         self.k - target.k])
+    # def calculate_error(self, target) -> np.ndarray:
+    #     return np.array([self.a - target.a,
+    #                      self.f - target.f,
+    #                      self.g - target.g,
+    #                      self.h - target.h,
+    #                      self.k - target.k])
+
+@dataclass
+class PhaseTarget:
+    name: str
+    frame: str
+    target: Orbit_Eq
