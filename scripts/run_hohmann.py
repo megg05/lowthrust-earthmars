@@ -5,6 +5,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
 
 from models.body import Earth, Mars, Sun
+from models.spacecraft import Psyche
 from hohmann import hohmann, propellant_mass
 
 
@@ -22,22 +23,16 @@ def main():
     print(f"Transfer time:  {result.tof:.1f} s  ({result.tof/86400:.1f} days)")
     print()
 
-    # Propellant comparison: chemical vs electric
-    m0 = 1500.0  # kg, same as Psyche reference
+    # Propellant comparison: chemical vs Psyche SEP
+    Isp_chem = 320.0  # bipropellant
+    mp_chem = propellant_mass(result.dv_total, Psyche.m0, Isp_chem)
+    mp_elec = propellant_mass(result.dv_total, Psyche.m0, Psyche.Isp)
 
-    # Chemical (bipropellant ~ 320 s Isp)
-    Isp_chem = 320.0
-    mp_chem = propellant_mass(result.dv_total, m0, Isp_chem)
-
-    # Electric (Hall-effect ~ 1800 s Isp, Psyche-class)
-    Isp_elec = 1800.0
-    mp_elec = propellant_mass(result.dv_total, m0, Isp_elec)
-
-    print("=== Propellant comparison (Tsiolkovsky) ===\n")
-    print(f"Spacecraft wet mass: {m0:.0f} kg")
-    print(f"Chemical (Isp={Isp_chem:.0f} s):  {mp_chem:.1f} kg propellant  ({100*mp_chem/m0:.1f}%)")
-    print(f"Electric (Isp={Isp_elec:.0f} s): {mp_elec:.1f} kg propellant  ({100*mp_elec/m0:.1f}%)")
-    print(f"Propellant savings:       {mp_chem - mp_elec:.1f} kg  ({100*(mp_chem - mp_elec)/mp_chem:.1f}%)")
+    print("=== Propellant comparison (Tsiolkovsky, Psyche spacecraft) ===\n")
+    print(f"Spacecraft wet mass: {Psyche.m0:.0f} kg")
+    print(f"Chemical (Isp={Isp_chem:.0f} s):   {mp_chem:.1f} kg propellant  ({100*mp_chem/Psyche.m0:.1f}%)")
+    print(f"SPT-140  (Isp={Psyche.Isp:.0f} s): {mp_elec:.1f} kg propellant  ({100*mp_elec/Psyche.m0:.1f}%)")
+    print(f"Propellant savings:        {mp_chem - mp_elec:.1f} kg  ({100*(mp_chem - mp_elec)/mp_chem:.1f}%)")
 
 
 if __name__ == "__main__":
