@@ -6,13 +6,13 @@ import numpy as np
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
 
-from models.spacecraft import Spacecraft, Psyche
+from models.spacecraft import Spacecraft
 from models.body import Earth, Mars, Sun
 from collocation import LowThrustOptimizer
 
 
 def main():
-    sc_dim = Psyche
+    sc_dim = Spacecraft(m0=1500.0, Tlim=0.25, Isp=1800.0)
 
     r1 = Earth.a_sun
     r2 = Mars.a_sun
