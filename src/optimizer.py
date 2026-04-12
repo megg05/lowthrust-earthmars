@@ -1,32 +1,27 @@
 import numpy as np
-from .propagator import Propagator
-from .qlaw import Qlaw, Qlawgains, Qlawtarget
+from .collocation import HermiteSimpsonCollocation
+
 
 class Optimizer:
-    def __init__(self, cfg, spacecraft, earth, mars, target_orbit):
-        self.cfg = cfg #TODO: make config file for solver settings and how many nodes
+    def __init__(self, cfg, spacecraft, body_central, rf_target, vf_target):
+        self.cfg = cfg
         self.spacecraft = spacecraft
-        self.earth = earth
-        self.mars = mars
-        self.propagator = Propagator(earth, spacecraft)
-        self.qlaw = Qlaw(spacecraft, target_orbit, Qlawgains())
+        self.collocation = HermiteSimpsonCollocation(
+            body_central.mu, spacecraft, cfg.n_nodes
+        )
+        self.rf = rf_target
+        self.vf = vf_target
 
-    def qlaw_control(self, mu):
-        qprev = {"val": None}
-        def u_fun(t,y):
-            u,q = self.qlaw.control(mu,y,qprev = qprev["value"])
-            qprev["value"] = q
-            return u
-        return u_fun
-    
-    def initial_guess(self, y0, t0, tf):
-        n = self.cfg.num_nodes
-        t_nodes = np.linspace(t0, tf, n)
-        u_fun = self.qlaw_control(self.earth.mu)
-        sol = self.propagator.forward(y0, (t0, tf), u_fun, t_nodes)
+    def build_initial_guess(self, y0, t0, tf):
+        t_nodes = np.linspace(t0, tf, self.cfg.n_nodes)
+        yf = np.array([self.rf, 0.0, 0.0, 0.0, self.vf, 0.0, y0[6] * 0.9])
+        return self.collocation.linear_guess(y0, yf, t_nodes)
 
-        #TODO: sample this with collocation nodes
-
-    def solve(self, y0, t0, tf):
-        init = self.initial_guess(y0, t0, tf)
-        #TODO: run init guess through collocation
+    def solve(self, y0, t0, tf, z0=None):
+        t_nodes = np.linspace(t0, tf, self.cfg.n_nodes)
+        return self.collocation.solve(
+            y0, self.rf, self.vf, t_nodes, z0=z0,
+            method=self.cfg.method,
+            maxiter=self.cfg.max_iter,
+            tol=self.cfg.tol,
+        )

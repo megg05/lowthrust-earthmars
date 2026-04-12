@@ -6,7 +6,7 @@ class Spacecraft:
     m0: float
     Tlim: float
     Isp: float
-    g0: float
+    g0: float = 9.80665
     
     @property
     def exhaust_vel(self) -> float:
