@@ -22,9 +22,9 @@ class Spacecraft:
 
 
 # SPT-140 Hall thruster, from Lord & Tilley (2017) IEEE Aerospace
-Psyche = Spacecraft(
-    m0=2400.0,   # wet mass: 1300 kg dry + 1100 kg xenon
-    Tlim=0.24,   # single SPT-140 thrust [N]
-    Isp=1800.0,  # Hall thruster specific impulse [s]
-)
+# Psyche = Spacecraft(
+#     m0=2400.0,   # wet mass: 1300 kg dry + 1100 kg xenon
+#     Tlim=0.24,   # single SPT-140 thrust [N]
+#     Isp=1800.0,  # Hall thruster specific impulse [s]
+# )
     

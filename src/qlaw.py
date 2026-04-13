@@ -2,6 +2,7 @@ import numpy as np
 import sympy as sym
 from dataclasses import dataclass, field
 # from utils import cart2eq, cart2oe, oe2cart, wrap_angle
+from .models.body import Body
 from .models.orbit import Orbit_Eq, PhaseTarget
 from .models.spacecraft import Spacecraft
 from .qlaw_sym import symbolic_qlaw
@@ -18,14 +19,9 @@ class QlawController:
         self.gains = gains
         self.fun_control, self.fun_q_dqdt = symbolic_qlaw()
         self.spacecraft = spacecraft
-        self.mu = None
-        self.target = None
-    
-    def set_target(self, mu, target: Orbit_Eq):
-        self.mu = mu
-        self.target = target
 
     def compute_thrust(self, 
+                        mu: float,
                       curr: list, 
                       target: list,
                       thrust_mag: float,
@@ -36,7 +32,7 @@ class QlawController:
         oe_list = curr
         oeT_list = target
         
-        args = [self.mu, thrust_mag, oe_list, oeT_list,W_oe]
+        args = [mu, thrust_mag, oe_list, oeT_list,W_oe]
         
         u_r, u_t, u_n, alpha, beta, q = self.fun_control(*args)
         
@@ -59,7 +55,7 @@ class QlawController:
         thrust_accel = self.spacecraft.max_thrust/y[6]
         curr_orbit = cart2eq(y[0:6])
         target_orbit = target
-        thrust_dict = self.compute_thrust(curr_orbit, target_orbit, thrust_accel, self.gains.W_oe)
+        thrust_dict = self.compute_thrust(mu, curr_orbit, target_orbit, thrust_accel, self.gains.W_oe)
         Q = thrust_dict["Q"]
         thrust_mag = self.compute_throttle(Q, Qprev = Qprev)*self.spacecraft.max_thrust
         

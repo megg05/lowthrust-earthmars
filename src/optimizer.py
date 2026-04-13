@@ -4,14 +4,13 @@ from .qlaw import QlawController, Qlawgains
 from .utils import cart2eq
 
 class Optimizer:
-    def __init__(self, cfg, spacecraft, body, target_orbit):
+    def __init__(self, cfg, spacecraft, target_orbit):
         self.cfg = cfg #TODO: make config file for solver settings and how many nodes
         self.spacecraft = spacecraft
-        self.propagator = Propagator(body, spacecraft)
+        self.propagator = Propagator(spacecraft)
 
         self.qlaw = QlawController(spacecraft) # arbitrary gains for now
         self.target = target_orbit
-
 
     def qlaw_control(self):
         qprev = {"val": None}

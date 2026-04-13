@@ -71,7 +71,7 @@ def coe2rv(a, e, i, Omega, omega, nu, mu):
     r = Q @ r_pf
     v = Q @ v_pf
 
-    return r, v
+    return r.flatten(), v.flatten()
 
 # =========================
 # Earth state
