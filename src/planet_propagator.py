@@ -5,8 +5,11 @@ import numpy as np
 # =========================
 AU = 1.495978707e11  # meters
 
-# Orbital elements (simplified J2000-ish)
-earth_a = AU
+# Epoch: near a favorable Earth-Mars departure window in 2033
+epoch = "2033-04-15T00:00:00"
+
+# Simplified heliocentric orbital elements
+earth_a = 1.000000 * AU
 earth_e = 0.0167
 earth_i = np.deg2rad(0.0)
 
