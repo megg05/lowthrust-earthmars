@@ -7,8 +7,6 @@ from ..planet_propagator import earth_state, mars_state
 class Body:
     name: str
     mu: float
-    sun_to_earth: Callable[[float], Tuple[np.ndarray, np.ndarray]] = earth_state
-    sun_to_mars: Callable[[float], Tuple[np.ndarray, np.ndarray]] = mars_state
     earth_SOI: float = 9.29e8
     mars_SOI: float = 5.78e8
     a_sun: float = 0.0  # heliocentric semi-major axis [m]

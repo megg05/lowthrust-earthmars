@@ -1,9 +1,7 @@
 import numpy as np
 import sympy as sym
 from dataclasses import dataclass, field
-# from utils import cart2eq, cart2oe, oe2cart, wrap_angle
-from .models.body import Body
-from .models.orbit import Orbit_Eq, PhaseTarget
+
 from .models.spacecraft import Spacecraft
 from .qlaw_sym import symbolic_qlaw
 from .utils import cart2eq
@@ -36,6 +34,8 @@ class QlawController:
         
         u_r, u_t, u_n, alpha, beta, q = self.fun_control(*args)
         
+        print("u_rtn ", u_r, u_t, u_n)
+
         return {
             'u_rtn': np.array([u_r, u_t, u_n]),  # radial, tangential, normal
             'alpha': alpha,  # in-plane angle
@@ -67,14 +67,13 @@ class QlawController:
 if __name__ == "__main__":
     mu_earth = 3.986e14
     
-    qgains = Qlawgains()
     sc = Spacecraft()
-    qlaw = QlawController(mu_earth,qgains, sc)
+    qlaw = QlawController(sc)
     
-    curr = sc.get_state_eq()
-    target_orbit = Orbit_Eq(a=8000e3, f=0.0, g=0.0, h=0.0, k=0.0)
-    target = PhaseTarget(name="target", frame="earth", target = target_orbit)
-        
-    thrust_cmd = qlaw.compute_thrust(curr, target_orbit, thrust_mag=1e-3, W_oe=qlaw.gains.W_oe)
-    print(f"Thrust direction (RTN): {thrust_cmd['u_rtn']}")
-    print(f"Alpha: {np.degrees(thrust_cmd['alpha']):.1f}, Beta: {np.degrees(thrust_cmd['beta']):.1f}")
+    curr = sc.geprint("=== TEST 1: Perfect orbit match ===")
+    mu = 3.986e14
+    curr = [7000e3, 0.01, 0.0, 0.0, 0.0, 0.0]  # a=7000km, near-circular LEO
+    target = curr.copy()  # IDENTICAL
+    
+    result = qlaw.compute_thrust(mu, curr, target, 1e-3, np.ones(5))
+    print(f"u_rtn: {result['u_rtn']}")
