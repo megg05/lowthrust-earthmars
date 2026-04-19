@@ -43,13 +43,28 @@ def cart2eq(cart: np.ndarray):
     else:
         nu = np.arctan2(np.dot(np.cross(evec, r), hvec) / hmag, np.dot(evec, r))
 
-    L = wrap_angle(raan + argp + nu)
+    # L = wrap_angle(raan + argp + nu)
 
-    f = e * np.cos(raan + argp)
+    # f = e * np.cos(raan + argp)
+    # g = e * np.sin(raan + argp)
+    # t = np.tan(inc / 2.0)
+    # h = t * np.cos(raan)
+    # k = t * np.sin(raan)
+
+    k_hat = np.array([0.0, 0.0, 1.0])
+    nvec = np.cross(k_hat, hvec)
+    nmag = np.linalg.norm(nvec)
+
+    inc = np.arccos(np.clip(hvec[2] / hmag, -1.0, 1.0))
+    raan = 0.0 if nmag < 1e-14 else np.arctan2(nvec[1], nvec[0])
+
+    hhat = hvec / hmag
+    h = -hhat[1] / (1.0 + hhat[2])
+    k =  hhat[0] / (1.0 + hhat[2])
     g = e * np.sin(raan + argp)
-    t = np.tan(inc / 2.0)
-    h = t * np.cos(raan)
-    k = t * np.sin(raan)
+    f = e * np.cos(raan + argp)
+
+    L = wrap_angle(raan + argp + nu)
 
     return [a,f,g,h,k,L]
 

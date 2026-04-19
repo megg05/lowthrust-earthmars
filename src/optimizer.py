@@ -13,10 +13,10 @@ class Optimizer:
         self.target = target_orbit
 
     def qlaw_control(self):
-        qprev = {"val": None}
+        qprev = [None]
         def u_fun(t,y):
-            u,Q = self.qlaw.control(self.propagator.body.mu,y, self.target,Qprev = qprev["val"])
-            qprev["val"] = Q
+            u,Q = self.qlaw.control(self.propagator.body.mu, y, self.target, Qprev=qprev[0])
+            qprev[0] = Q
             return u
         return u_fun
     

@@ -34,8 +34,6 @@ class QlawController:
         
         u_r, u_t, u_n, alpha, beta, q = self.fun_control(*args)
         
-        print("u_rtn ", u_r, u_t, u_n)
-
         return {
             'u_rtn': np.array([u_r, u_t, u_n]),  # radial, tangential, normal
             'alpha': alpha,  # in-plane angle
@@ -63,17 +61,3 @@ class QlawController:
             return np.zeros(3), Q
         
         return thrust_mag*thrust_dict["u_rtn"], Q
-
-if __name__ == "__main__":
-    mu_earth = 3.986e14
-    
-    sc = Spacecraft()
-    qlaw = QlawController(sc)
-    
-    curr = sc.geprint("=== TEST 1: Perfect orbit match ===")
-    mu = 3.986e14
-    curr = [7000e3, 0.01, 0.0, 0.0, 0.0, 0.0]  # a=7000km, near-circular LEO
-    target = curr.copy()  # IDENTICAL
-    
-    result = qlaw.compute_thrust(mu, curr, target, 1e-3, np.ones(5))
-    print(f"u_rtn: {result['u_rtn']}")

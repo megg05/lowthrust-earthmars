@@ -1,7 +1,6 @@
 from dataclasses import dataclass
 import numpy as np
 from typing import Callable, Optional, Tuple
-from ..planet_propagator import earth_state, mars_state
 
 @dataclass
 class Body:

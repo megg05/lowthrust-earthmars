@@ -27,25 +27,24 @@ class Propagator:
         m = y[6]
         T = control(t,y)
         Tmag = np.linalg.norm(T)
-        print("pre propagated orbit pos ", r)
 
         a = -Sun.mu*r / np.linalg.norm(r)**3 + T/m
 
-        if self.body.name == "earth":
-            earth_dist, _ = earth_state(t)
-            r_earth = r-earth_dist
-            rmag_earth = np.linalg.norm(r_earth)
-            if rmag_earth > body.earth_SOI:
-                self.change_body = True
-            a = -body.mu*r_earth / rmag_earth**3
-        else:
-            mars_dist, _ = mars_state(t)
-            r_mars = r-mars_dist
-            rmag_mars = np.linalg.norm(r_mars)
-            if self.body.name == "sun" and rmag_mars < body.mars_SOI:
-                    self.change_body = True
-            elif self.body.name == "mars":
-                a = -body.mu*r_mars / rmag_mars**3
+        # if self.body.name == "earth":
+        #     earth_dist, _ = earth_state(t)
+        #     r_earth = r-earth_dist
+        #     rmag_earth = np.linalg.norm(r_earth)
+        #     if rmag_earth > body.earth_SOI:
+        #         self.change_body = True
+        #     a = -body.mu*r_earth / rmag_earth**3
+        # else:
+        #     mars_dist, _ = mars_state(t)
+        #     r_mars = r-mars_dist
+        #     rmag_mars = np.linalg.norm(r_mars)
+        #     if self.body.name == "sun" and rmag_mars < body.mars_SOI:
+        #             self.change_body = True
+        #     elif self.body.name == "mars":
+        #         a = -body.mu*r_mars / rmag_mars**3
 
         mdot = -Tmag/(spacecraft.Isp*spacecraft.g0)
 

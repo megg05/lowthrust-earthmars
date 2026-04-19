@@ -17,7 +17,7 @@ mars_a  = 1.523679 * AU
 mars_e  = 0.0934
 mars_i  = np.deg2rad(1.85)
 
-mu_sun = 1327e20  # ensure this is defined in your environment
+mu_sun = 1.327e20  # ensure this is defined in your environment
 
 # =========================
 # Kepler solver (Newton)
@@ -103,7 +103,8 @@ def mars_state(t):
     nu = 2*np.arctan2(np.sqrt(1+mars_e)*np.sin(E/2),
                       np.sqrt(1-mars_e)*np.cos(E/2))
 
-    Omega = 0.0
-    omega = 0.0
+    Omega = np.deg2rad(49.6)   # Mars ascending node
+    omega = np.deg2rad(286.5)  # Mars argument of periapsis
+    i = np.deg2rad(1.85)       # Mars inclination ✓
 
     return coe2rv(mars_a, mars_e, mars_i, Omega, omega, nu, mu_sun)
