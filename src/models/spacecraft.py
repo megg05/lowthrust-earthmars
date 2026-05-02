@@ -5,9 +5,9 @@ import numpy as np
 @dataclass
 class Spacecraft:
     # TODO:  psyche params
-    m0: float = 1648+1085 #dry mass + propellant
+    m0: float = 1648+5000 #dry mass + propellant
     min_thrust: float = 0.0
-    max_thrust: float = 0.240
+    max_thrust: float = 0.280*4
     # min_power: float = 1000.0 #W
     # max_power: float = 4500.0 #W
     Isp: float = 1800

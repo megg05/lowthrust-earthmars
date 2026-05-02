@@ -54,6 +54,7 @@ def symbolic_qlaw():
             W_oe[4] * S_oe[4] * (e_oe[4] / oedot[4])**2
         )
 
+
         # MEE sensitivity matrix
         cosL = sym.cos(L_)
         sinL = sym.sin(L_)
@@ -101,8 +102,8 @@ def symbolic_qlaw():
         D3_unit = D3 / Dmag
 
         # in/out of plane thrusting angles!
-        alpha = sym.atan2(D1_unit, D2_unit) 
-        beta = sym.atan(D3_unit / sym.sqrt(D1_unit**2 + D2_unit**2))
+        alpha = sym.atan2(-D2_unit, -D1_unit) 
+        beta = sym.atan(-D3_unit / sym.sqrt(D1_unit**2 + D2_unit**2))
 
         # Qdot Lyapunov descent
         cosa = sym.cos(alpha)
@@ -110,40 +111,20 @@ def symbolic_qlaw():
         sina = sym.sin(alpha)
         sinb = sym.sin(beta)
         dqdt = accel*(D1*cosb*cosa + D2*cosb*sina + D3*sinb)
+        u_r = cosb*cosa
+        u_t = cosb*sina
+        u_n = sinb
 
         # lambdify
         arg_list = [mu, accel, oe, oeT, W_oe]
         
-        fun_control = sym.lambdify(arg_list, [D1_unit, D2_unit, D3_unit, alpha, beta, q], "numpy", cse=True)
+        fun_control = sym.lambdify(arg_list, [u_r, u_t, u_n, alpha, beta, q], "numpy", cse=True)
         fun_q_dqdt = sym.lambdify(arg_list, [q, dqdt], "numpy", cse=True)
         # fun_psi = sym.lambdify(arg_list, psi, "numpy", cse=True)
         # fun_dqdoe = sym.lambdify(arg_list, dqdoe, "numpy", cse=True)
+    
 
         return fun_control, fun_q_dqdt
 
     fun_control, fun_q_dqdt = calculate_Q()
     return fun_control, fun_q_dqdt
-
-
-# # Example usage
-# if __name__ == "__main__":
-#     mu_earth = 3.986e14
-    
-#     # Initialize controller
-#     qlaw = QlawController(mu_earth)
-    
-#     # Example states
-#     curr = Orbit_Eq(a=7000e3, f=0.01, g=0.0, h=0.0, k=0.0, L=0.0)
-#     target = Target_Eq(a=8000e3, f=0.0, g=0.0, h=0.0, k=0.0)
-    
-#     params = {
-#         'rpmin': 6378000.0,
-#         'Wp': 1.0,
-#         'w_oe': [1.0, 1.0, 1.0, 1.0, 1.0],
-#         'm_petro': 3.0, 'n_petro': 4.0, 'r_petro': 2.0,
-#         'b_petro': 1.0, 'k_petro': 1.0
-#     }
-    
-#     thrust_cmd = qlaw.compute_thrust(curr, target, thrust_mag=1e-3, params=params)
-#     print(f"Thrust direction (RTN): {thrust_cmd['u_rtn']}")
-#     print(f"Alpha: {np.degrees(thrust_cmd['alpha']):.1f}°, Beta: {np.degrees(thrust_cmd['beta']):.1f}°")

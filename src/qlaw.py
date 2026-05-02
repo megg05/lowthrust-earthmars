@@ -9,7 +9,7 @@ from .utils import cart2eq
 @dataclass
 class Qlawgains:
     Wp: float=1.0 #ignore for now, penalty for low perigee passages
-    W_oe: np.ndarray=field(default_factory=lambda: np.ones(5))
+    W_oe: np.ndarray=field(default_factory=lambda: np.array([0.8,1.0,1.0,1.0,1.0]))
     coast_threshold: float = 0.0
 
 class QlawController:
@@ -17,6 +17,7 @@ class QlawController:
         self.gains = gains
         self.fun_control, self.fun_q_dqdt = symbolic_qlaw()
         self.spacecraft = spacecraft
+        self.phase = 1
 
     def compute_thrust(self, 
                         mu: float,
@@ -25,8 +26,6 @@ class QlawController:
                       thrust_mag: float,
                       W_oe: np.ndarray) -> dict:
         
-        #TODO: take out thrust mag so that throttle can be calculated after Q
-
         oe_list = curr
         oeT_list = target
         
@@ -42,6 +41,7 @@ class QlawController:
         }
     
     def compute_throttle(self, Q, Qprev=None):
+        # TODO: model in thrust-coast effectivity
         # TODO: model in some varying throttle based on available solar power...
         if not Qprev:
             return 1.0

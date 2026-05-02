@@ -1,7 +1,6 @@
 from scipy.integrate import solve_ivp
 import numpy as np
 from .models.body import Body
-from .planet_propagator import earth_state, mars_state
 
 Earth = Body(name="earth",mu=3.986e14)
 Mars = Body(name="mars",mu=4.283e13)
@@ -13,20 +12,45 @@ class Propagator:
         self.spacecraft = spacecraft
         self.change_body = False
 
+    
+
     def forward(self, y0, tspan, control):
         return solve_ivp(
-            lambda t,y: self.twobody(t,y,self.spacecraft, self.body, control),
+            lambda t, y: self.twobody(t, y, self.spacecraft, self.body, control),
             tspan,
             y0,
-            'RK45'
+            method="RK45",
+            max_step=3600.0,   # 1 hour, for example
         )
+    
+    def backward(self, y0, tspan, control):
+        # tspan = [t0, tf] with t0 > tf
+        sol = solve_ivp(
+            lambda t, y: -self.twobody(t, y, self.spacecraft, self.body, control),
+            tspan,
+            y0,
+            method="RK45",
+            max_step=3600.0,
+        )
+        # # Optional: reverse so time runs forward in the output
+        # sol.t = sol.t[::-1]
+        # sol.y = sol.y[:, ::-1]
+        return sol
     
     def twobody(self,t,y,spacecraft, body, control):
         r = y[0:3]
         v = y[3:6]
         m = y[6]
-        T = control(t,y)
-        Tmag = np.linalg.norm(T)
+        T_rtn = control(t,y)
+        Tmag = np.linalg.norm(T_rtn)
+
+        r_hat = r / np.linalg.norm(r)
+        h_vec = np.cross(r, v)
+        n_hat = h_vec / np.linalg.norm(h_vec)
+        t_hat = np.cross(n_hat, r_hat)
+
+        C_rtn2inertial = np.column_stack((r_hat, t_hat, n_hat))
+        T = C_rtn2inertial @ T_rtn
 
         a = -Sun.mu*r / np.linalg.norm(r)**3 + T/m
 
@@ -47,5 +71,6 @@ class Propagator:
         #         a = -body.mu*r_mars / rmag_mars**3
 
         mdot = -Tmag/(spacecraft.Isp*spacecraft.g0)
+
 
         return np.hstack((v,a,mdot))
