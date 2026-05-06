@@ -25,7 +25,7 @@ class Propagator:
             lambda t, y: self.twobody(t, y, self.spacecraft, self.body, control),
             tspan,
             y0,
-            method="RK23",
+            method="RK45",
             max_step=86400.0, 
         )
         return sol, np.asarray(self.t_hist), np.asarray(self.u_hist), np.asarray(self.q_hist)
@@ -47,7 +47,8 @@ class Propagator:
         C_rtn2inertial = np.column_stack((r_hat, t_hat, n_hat))
         T = C_rtn2inertial @ T_rtn
 
-        a = -Sun.mu*r / np.linalg.norm(r)**3 + T/m
+
+        a = -self.body.mu*r / np.linalg.norm(r)**3 + T/m
 
 
         self.t_hist.append(t)

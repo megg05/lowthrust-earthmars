@@ -9,7 +9,7 @@ from .utils import cart2eq
 @dataclass
 class Qlawgains:
     Wp: float=1.0 #ignore for now, penalty for low perigee passages
-    W_oe: np.ndarray=field(default_factory=lambda: np.array([100.0,100.0,100.0,100.0,100.0,1.0]))
+    W_oe: np.ndarray=field(default_factory=lambda: np.array([1.0,1.0,1.0,1.0,1.0,1.0]))
     coast_threshold: float = 0.01
     coast_tolerances: np.ndarray=field(default_factory=lambda: np.array([9e2, 0.008, 0.008, 0.0012, 0.0012]))
 
@@ -46,15 +46,19 @@ class QlawController:
     def compute_throttle(self, Qdot, Qprev=None):
         # TODO: model in thrust-coast effectivity
         # TODO: model in some varying throttle based on available solar power...
-        if not Qprev:
+        if Qprev is None:
             return 1.0
-        if abs(Qdot)>self.gains.coast_threshold:
-            return 1.0
-        return 0.0
+
+        if Qdot > self.gains.coast_threshold:
+            return 1.0   # Q is worsening, thrust harder
+        elif Qdot < -self.gains.coast_threshold:
+            return 0.0   # Q is decreasing fast enough, coast
+        else:
+            return 0.8
     
     def control(self, mu, y, target, Qprev = None):
         thrust_accel = self.spacecraft.max_thrust/y[6]
-        curr_orbit = cart2eq(y[0:6])
+        curr_orbit = cart2eq(y[0:6],mu)
         target_orbit = target
         thrust_dict = self.compute_thrust(mu, curr_orbit, target_orbit, thrust_accel, self.gains.W_oe)
         Q = thrust_dict["Q"]
@@ -73,12 +77,11 @@ class QlawController:
         return False
     
     def compute_mee_max_rates(self, mu, y):
-        # NOT USED
         """
         Calculates scaling factors (D_oe) for MEE-a: [a, f, g, h, k]
         """
         # y = [a, f, g, h, k, L]
-        a, f, g, h, k, L = cart2eq(y[0:6])
+        a, f, g, h, k, L = cart2eq(y[0:6],mu)
         thrust_accel = self.spacecraft.max_thrust / y[6]
         
         # We still need p for the internal geometry calculations

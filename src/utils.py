@@ -8,8 +8,7 @@ def wrap_angle(x):
 
 def oe2cart(mu: float, oe: Orbit_Eq):
     pass
-def cart2kep(cart: np.ndarray):
-    mu = 1.327e20  # heliocentric
+def cart2kep(cart: np.ndarray, mu: float):
     r = np.asarray(cart[0:3], dtype=float)
     v = np.asarray(cart[3:6], dtype=float)
 
@@ -71,8 +70,7 @@ def cart2kep(cart: np.ndarray):
 
     return np.array([a, e, inc, raan, argp, nu], dtype=float)
 
-def cart2eq(cart: np.ndarray):
-    mu = 1.327e20 # always heliocentric MEE
+def cart2eq(cart: np.ndarray, mu: float):
     r = np.asarray(cart[0:3], dtype=float)
     v = np.asarray(cart[3:], dtype=float)
     rmag = np.linalg.norm(r)
@@ -128,8 +126,7 @@ def cart2eq(cart: np.ndarray):
 
     return [a,f,g,h,k,L]
 
-def eq2cart(mee: np.ndarray):
-    mu = 1.327e20  # heliocentric
+def eq2cart(mee: np.ndarray,mu: float):
     a, f, g, h, k, L = np.asarray(mee, dtype=float)
 
     e = np.hypot(f, g)

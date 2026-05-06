@@ -12,11 +12,11 @@ class Optimizer:
 
         self.controller = QlawController(spacecraft) # arbitrary gains for now
         self.phasing_tolerances = np.array([0.05*AU, 0.02, 0.02, 0.01, 0.01])
-        self.final_tolerances = np.array([8e8, 0.002, 0.002, 0.002, 0.002, 0.17])
+        self.final_tolerances = np.array([8e8, 0.01, 0.01, 0.01, 0.01, 0.4])
         self.target = target_orbit
         self.true_target = target_orbit.copy()
 
-    def simulate_forward(self, t0, tf, y0, dt=86400.0):
+    def simulate_forward(self, t0, tf, y0, mars_loc, dt=86400.0):
         t = t0
         y = y0
         ts = [t0]
@@ -24,7 +24,7 @@ class Optimizer:
         t_hists = []
         u_hists = []
         q_hists = []
-        kep0 = cart2kep(y0[0:6])
+        kep0 = cart2kep(y0[0:6],self.propagator.body.mu)
         a_s = [kep0[0]]
         e_s = [kep0[1]]
 
@@ -33,7 +33,7 @@ class Optimizer:
         while t < t0+tf:
             t_next = min(t + dt, t0+tf)
 
-            if self.controller.phase == 2 and self.check_converge(y):
+            if self.controller.phase == 2 and self.check_converge(y, mars_loc[int(t/dt)]):
                 break
             
             self.update_target(t,y)
@@ -52,41 +52,11 @@ class Optimizer:
             t_hists.extend(t_hist)
             u_hists.extend(u_hist)
             q_hists.extend(q_hist)
-            kepy = cart2kep(y[0:6])
+            kepy = cart2kep(y[0:6],self.propagator.body.mu)
             a_s.extend([kepy[0]])
             e_s.extend([kepy[1]])
 
         return np.array(ts), np.array(ys).T, np.array(a_s), np.array(e_s), np.array(t_hists), np.array(u_hists), np.array(q_hists)
-    
-    # def simulate_backward(self, t0, tf, y0, dt=86400.0):
-    #     # t0 is later time; tf is earlier time; t0 > tf
-    #     t = t0
-    #     y = y0
-    #     ts = [t0]
-    #     ys = [y0]
-    #     kep0 = cart2kep(y[0:6])
-    #     a_s = [kep0[0]]
-    #     e_s = [kep0[1]]
-
-
-    #     while t > tf:   # reverse loop: t decreases
-    #         t_next = max(t - dt, tf)
-    #         print(t/86400.0)
-
-    #         sol = self.propagator.backward(
-    #             y0=y,
-    #             tspan=(t, t_next),   # t > t_next
-    #             control=self.qlaw_control()
-    #         )
-    #         y = sol.y[:, -1]
-    #         t = t_next
-    #         ts.extend(sol.t[1:])
-    #         ys.extend(sol.y.T[1:])
-    #         kepy = cart2kep(y[0:6])
-    #         a_s.append(kepy[0])
-    #         e_s.append(kepy[1])
-
-    #     return np.array(ts), np.array(ys).T, np.array(a_s), np.array(e_s)
 
     def qlaw_control(self):
         qprev = [None]
@@ -114,12 +84,12 @@ class Optimizer:
         # aT_biased = np.clip(aT_biased, self.target[0] - 0.04*AU, self.target[0] + 0.04*AU)
         # self.target[0] = aT_biased
         # return
-        curr_eq = cart2eq(y[0:6])
+        curr_eq = cart2eq(y[0:6], self.propagator.body.mu)
         
         # 1. Evaluate "Shape" Errors (a, f, g, h, k)
         # We use a relative error for 'a' because its magnitude is so large (1e11)
         errors = np.zeros(5)
-        errors[0] = abs(curr_eq[0] - self.true_target[0]) / self.true_target[0] # Relative error for SMA
+        errors[0] = abs(curr_eq[0] - self.true_target[0])
         errors[1:5] = abs(np.array(curr_eq[1:5]) - np.array(self.true_target[1:5]))           # Absolute for others
         
         # 2. Check for Phase Transition
@@ -131,8 +101,6 @@ class Optimizer:
             if shape_converged:
                 print("--- SWITCHING TO PHASE 2 (PHASING) ---")
                 self.controller.phase = 2
-                print(t)
-                print(y)
             # elif t>800*86400:
             #     print("forcing phase 2")
             #     self.controller.phase = 2
@@ -170,9 +138,12 @@ class Optimizer:
     
 
     
-    def check_converge(self, y):
-        errors = abs(np.array(cart2eq(y[0:6]))-np.array(self.true_target))
+    def check_converge(self, y, goal):
+        errors = abs(np.array(cart2eq(y[0:6],self.propagator.body.mu))-np.array(self.true_target))
         if all(errors[i] < self.final_tolerances[i] for i in range(6)):
+        # r_to_mars = np.linalg.norm(y[0:3] - goal[0:3])
+        # print(r_to_mars)
+        # if r_to_mars <= 5.77e8:
             return True
         return False
     
