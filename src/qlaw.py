@@ -11,6 +11,7 @@ class Qlawgains:
     Wp: float=1.0 #ignore for now, penalty for low perigee passages
     W_oe: np.ndarray=field(default_factory=lambda: np.array([1.0,1.0,1.0,1.0,1.0,1.0]))
     coast_threshold: float = 0.01
+    nominal_throttle: float = 0.1
     coast_tolerances: np.ndarray=field(default_factory=lambda: np.array([9e2, 0.008, 0.008, 0.0012, 0.0012]))
 
 class QlawController:
@@ -48,13 +49,13 @@ class QlawController:
         # TODO: model in some varying throttle based on available solar power...
         if Qprev is None:
             return 1.0
-
+        
         if Qdot > self.gains.coast_threshold:
             return 1.0   # Q is worsening, thrust harder
         elif Qdot < -self.gains.coast_threshold:
             return 0.0   # Q is decreasing fast enough, coast
         else:
-            return 0.8
+            return self.gains.nominal_throttle
     
     def control(self, mu, y, target, Qprev = None):
         thrust_accel = self.spacecraft.max_thrust/y[6]

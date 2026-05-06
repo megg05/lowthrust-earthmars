@@ -16,6 +16,8 @@ class Optimizer:
         self.target = target_orbit
         self.true_target = target_orbit.copy()
 
+        self.capture = False
+
     def simulate_forward(self, t0, tf, y0, mars_loc, dt=86400.0):
         t = t0
         y = y0
@@ -33,7 +35,7 @@ class Optimizer:
         while t < t0+tf:
             t_next = min(t + dt, t0+tf)
 
-            if self.controller.phase == 2 and self.check_converge(y, mars_loc[int(t/dt)]):
+            if self.controller.phase == 2 and self.check_converge(y, self.capture):
                 break
             
             self.update_target(t,y)
@@ -138,12 +140,11 @@ class Optimizer:
     
 
     
-    def check_converge(self, y, goal):
+    def check_converge(self, y, capture = False):
+        if capture:
+            return True
         errors = abs(np.array(cart2eq(y[0:6],self.propagator.body.mu))-np.array(self.true_target))
         if all(errors[i] < self.final_tolerances[i] for i in range(6)):
-        # r_to_mars = np.linalg.norm(y[0:3] - goal[0:3])
-        # print(r_to_mars)
-        # if r_to_mars <= 5.77e8:
             return True
         return False
     
