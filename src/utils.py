@@ -83,7 +83,7 @@ def cart2eq(cart: np.ndarray, mu: float):
     evec = (np.cross(v, hvec) / mu) - r / rmag
     e = np.linalg.norm(evec)
     p = hmag**2 / mu
-    a = p / (1.0 - e**2) if e < 1.0 else np.inf
+    a = p / (1.0 - e**2)
 
     k_hat = np.array([0.0, 0.0, 1.0])
     nvec = np.cross(k_hat, hvec)

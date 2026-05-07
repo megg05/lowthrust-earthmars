@@ -57,11 +57,11 @@ def symbolic_qlaw():
         # oedot = [adot_xx, fdot_xx, gdot_xx, hdot_xx, kdot_xx]
 
 
-        # S_oe = [
-        #     (1 + (sym.sqrt((a_ - aT_)**2) / (3 * aT_)) ** 4) ** (1 / 2),
-        #     1.0, 1.0, 1.0, 1.0, 1.0
-        # ]
-        S_oe = [1.0,1.0,1.0,1.0,1.0]
+        S_oe = [
+            (1 + (sym.sqrt((a_ - aT_)**2) / (3 * aT_)) ** 4) ** (1 / 2),
+            1.0, 1.0, 1.0, 1.0, 1.0
+        ]
+        # S_oe = [1.0,1.0,1.0,1.0,1.0]
 
         q = (W_oe[0] * S_oe[0] * (e_oe[0] / oedot[0])**2 +
             W_oe[1] * S_oe[1] * (e_oe[1] / oedot[1])**2 +
