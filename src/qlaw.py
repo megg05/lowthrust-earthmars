@@ -25,13 +25,13 @@ class QlawController:
                         mu: float,
                       curr: list, 
                       target: list,
-                      thrust_mag: float,
+                      accel_mag: float,
                       W_oe: np.ndarray) -> dict:
         
         oe_list = curr
         oeT_list = target
         
-        args = [mu, thrust_mag, oe_list, oeT_list,W_oe, self.D_mee, self.phase]
+        args = [mu, accel_mag, oe_list, oeT_list,W_oe, self.D_mee, self.phase]
         
         u_r, u_t, u_n, alpha, beta, q = self.fun_control(*args)
         _, dqdt = self.fun_q_dqdt(*args)
@@ -58,17 +58,19 @@ class QlawController:
             return self.gains.nominal_throttle
     
     def control(self, mu, y, target, Qprev = None):
-        thrust_accel = self.spacecraft.max_thrust/y[6]
+        # thrust_accel = self.spacecraft.max_thrust/y[6] # does this need to be accel normalized?
+        available_power = self.spacecraft.solar_power_available(np.linalg.norm(y[0:3]))
+        max_thrust = self.spacecraft.thrust_mag_from_power(available_power)
         curr_orbit = cart2eq(y[0:6],mu)
         target_orbit = target
-        thrust_dict = self.compute_thrust(mu, curr_orbit, target_orbit, thrust_accel, self.gains.W_oe)
+        thrust_dict = self.compute_thrust(mu, curr_orbit, target_orbit, max_thrust/y[6], self.gains.W_oe)
         Q = thrust_dict["Q"]
         Qdot = thrust_dict["Qdot"]
         if self.phase == 2 and self.close_to_biased(curr_orbit, target):
             throttle = 0.0
         else: 
             throttle = self.compute_throttle(Qdot, Qprev=Qprev)
-        thrust_mag = throttle*self.spacecraft.max_thrust
+        thrust_mag = throttle*max_thrust
         return thrust_mag*thrust_dict["u_rtn"],Q
     
     def close_to_biased(self, curr, target):
@@ -83,7 +85,6 @@ class QlawController:
         """
         # y = [a, f, g, h, k, L]
         a, f, g, h, k, L = cart2eq(y[0:6],mu)
-        thrust_accel = self.spacecraft.max_thrust / y[6]
         
         # We still need p for the internal geometry calculations
         p = a * (1 - (f**2 + g**2))

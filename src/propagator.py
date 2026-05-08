@@ -22,7 +22,7 @@ class Propagator:
         self.u_hist = []
         self.q_hist = []
         sol= solve_ivp(
-            lambda t, y: self.twobody(t, y, self.spacecraft, self.body, control),
+            lambda t, y: self.twobody(t, y, control),
             tspan,
             y0,
             method="RK45",
@@ -31,7 +31,7 @@ class Propagator:
         return sol, np.asarray(self.t_hist), np.asarray(self.u_hist), np.asarray(self.q_hist)
     
     
-    def twobody(self,t,y,spacecraft, body, control):
+    def twobody(self,t,y,control):
         r = y[0:3]
         v = y[3:6]
         m = y[6]
@@ -55,7 +55,7 @@ class Propagator:
         self.u_hist.append(T_rtn)
         self.q_hist.append(Q)
 
-        mdot = -Tmag/(spacecraft.Isp*spacecraft.g0)
+        mdot = self.spacecraft.mdot(Tmag)
 
 
         return np.hstack((v,a,mdot))
