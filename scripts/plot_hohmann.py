@@ -1,280 +1,211 @@
-"""Hohmann transfer visualization: orbit diagram, velocity, propellant, phasing, and timeline."""
+"""Hohmann transfer visualization with plane change, parking orbits, and HCI propagation."""
 from pathlib import Path
 import sys
 import numpy as np
 import matplotlib.pyplot as plt
-from matplotlib.patches import FancyArrowPatch, Arc
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
 
 from models.body import Earth, Mars, Sun
 from models.spacecraft import Psyche
-from hohmann import hohmann, propellant_mass
+from hohmann import hohmann_transfer, propagate_hci, propellant_mass
 
 
-AU = 1.496e11  # meters
+AU = 1.496e11
 
 
-def plot_transfer_orbit(ax, result):
-    """Top-down view: Earth orbit, Mars orbit, transfer ellipse."""
+def plot_transfer_orbit(ax, result, states):
+    """Top-down view of HCI propagation: Earth orbit, Mars orbit, transfer arc."""
     theta = np.linspace(0, 2 * np.pi, 300)
 
-    # Earth orbit (circular approx)
     r1 = Earth.a_sun
     ax.plot(r1 * np.cos(theta) / AU, r1 * np.sin(theta) / AU,
-            'b-', lw=1.2, label='Earth orbit')
+            'b-', lw=1.0, alpha=0.5, label='Earth orbit')
 
-    # Mars orbit (circular approx)
     r2 = Mars.a_sun
     ax.plot(r2 * np.cos(theta) / AU, r2 * np.sin(theta) / AU,
-            'r-', lw=1.2, label='Mars orbit')
+            'r-', lw=1.0, alpha=0.5, label='Mars orbit')
 
-    # Transfer ellipse (half)
-    a_t = result.a_transfer
-    e_t = 1 - r1 / a_t  # eccentricity of transfer orbit
-    theta_t = np.linspace(0, np.pi, 200)
-    r_t = a_t * (1 - e_t**2) / (1 + e_t * np.cos(theta_t))
-    ax.plot(r_t * np.cos(theta_t) / AU, r_t * np.sin(theta_t) / AU,
-            'g--', lw=2, label='Transfer orbit')
+    ax.plot(states[:, 0] / AU, states[:, 1] / AU,
+            'g-', lw=2.5, label='Transfer orbit')
 
-    # Sun
-    ax.plot(0, 0, 'yo', ms=12, zorder=5)
+    ax.plot(0, 0, 'yo', ms=14, zorder=5)
     ax.annotate('Sun', (0, 0), textcoords="offset points",
-                xytext=(10, -10), fontsize=9)
+                xytext=(10, -12), fontsize=9)
 
-    # Departure and arrival points
-    ax.plot(r1 / AU, 0, 'bo', ms=10, zorder=5)
-    ax.annotate('Departure\n(Earth)', (r1 / AU, 0), textcoords="offset points",
-                xytext=(10, 10), fontsize=9, color='blue')
+    ax.plot(states[0, 0] / AU, states[0, 1] / AU, 'bo', ms=10, zorder=5)
+    ax.annotate('Departure\n(LEO escape)', (states[0, 0] / AU, states[0, 1] / AU),
+                textcoords="offset points", xytext=(10, 10), fontsize=8, color='blue')
 
-    ax.plot(-r2 / AU, 0, 'ro', ms=10, zorder=5)
-    ax.annotate('Arrival\n(Mars)', (-r2 / AU, 0), textcoords="offset points",
-                xytext=(10, 10), fontsize=9, color='red')
-
-    # Direction arrow on transfer
-    mid_idx = len(theta_t) // 3
-    ax.annotate('', xy=(r_t[mid_idx + 5] * np.cos(theta_t[mid_idx + 5]) / AU,
-                        r_t[mid_idx + 5] * np.sin(theta_t[mid_idx + 5]) / AU),
-                xytext=(r_t[mid_idx] * np.cos(theta_t[mid_idx]) / AU,
-                        r_t[mid_idx] * np.sin(theta_t[mid_idx]) / AU),
-                arrowprops=dict(arrowstyle='->', color='green', lw=2))
+    ax.plot(states[-1, 0] / AU, states[-1, 1] / AU, 'ro', ms=10, zorder=5)
+    ax.annotate('Arrival\n(MSO capture)', (states[-1, 0] / AU, states[-1, 1] / AU),
+                textcoords="offset points", xytext=(10, 10), fontsize=8, color='red')
 
     ax.set_xlabel('x [AU]')
     ax.set_ylabel('y [AU]')
-    ax.set_title('Hohmann Transfer: Earth to Mars')
+    ax.set_title('Hohmann Transfer (HCI frame, top-down)')
     ax.set_aspect('equal')
     ax.legend(loc='lower right', fontsize=8)
     ax.grid(True, alpha=0.3)
 
 
-def plot_velocity(ax, result):
-    """Velocity diagram showing circular and transfer velocities with delta-v."""
-    labels = ['Departure', 'Arrival']
-    v_circ = [result.v_dep_circ / 1e3, result.v_arr_circ / 1e3]
-    v_trans = [result.v_dep_transfer / 1e3, result.v_arr_transfer / 1e3]
-    dv = [result.dv1 / 1e3, result.dv2 / 1e3]
+def plot_3d_transfer(ax, states):
+    """3D view showing out-of-plane component from plane change."""
+    ax.plot(states[:, 0] / AU, states[:, 1] / AU, states[:, 2] / AU,
+            'g-', lw=2, label='Transfer arc')
+    ax.plot([states[0, 0] / AU], [states[0, 1] / AU], [states[0, 2] / AU],
+            'bo', ms=8, label='Departure')
+    ax.plot([states[-1, 0] / AU], [states[-1, 1] / AU], [states[-1, 2] / AU],
+            'ro', ms=8, label='Arrival')
 
-    x = np.arange(len(labels))
-    w = 0.25
-
-    bars1 = ax.bar(x - w, v_circ, w, label='Circular velocity', color='steelblue')
-    bars2 = ax.bar(x, v_trans, w, label='Transfer velocity', color='seagreen')
-    bars3 = ax.bar(x + w, dv, w, label='Δv (burn)', color='coral')
-
-    # Value labels
-    for bars in [bars1, bars2, bars3]:
-        for bar in bars:
-            h = bar.get_height()
-            ax.text(bar.get_x() + bar.get_width() / 2, h + 0.2,
-                    f'{h:.1f}', ha='center', va='bottom', fontsize=8)
-
-    ax.set_xticks(x)
-    ax.set_xticklabels(labels)
-    ax.set_ylabel('Velocity [km/s]')
-    ax.set_title('Velocity Breakdown')
-    ax.legend(fontsize=8)
-    ax.grid(True, axis='y', alpha=0.3)
-
-
-def plot_propellant(ax, result):
-    """Bar chart: chemical vs electric propellant mass."""
-    Isp_chem = 320.0
-    mp_chem = propellant_mass(result.dv_total, Psyche.m0, Isp_chem)
-    mp_elec = propellant_mass(result.dv_total, Psyche.m0, Psyche.Isp)
-
-    categories = [f'Chemical\n(Isp={Isp_chem:.0f} s)',
-                  f'SPT-140\n(Isp={Psyche.Isp:.0f} s)']
-    masses = [mp_chem, mp_elec]
-    colors = ['#d95f02', '#1b9e77']
-
-    bars = ax.bar(categories, masses, color=colors, width=0.5)
-
-    for bar, m in zip(bars, masses):
-        pct = 100 * m / Psyche.m0
-        ax.text(bar.get_x() + bar.get_width() / 2, m + 20,
-                f'{m:.0f} kg\n({pct:.0f}%)', ha='center', va='bottom', fontsize=9)
-
-    ax.axhline(Psyche.m0, color='gray', ls='--', lw=1, label=f'Wet mass ({Psyche.m0:.0f} kg)')
-    ax.set_ylabel('Propellant mass [kg]')
-    ax.set_title('Propellant Comparison (Tsiolkovsky)')
-    ax.legend(fontsize=8)
-    ax.grid(True, axis='y', alpha=0.3)
-    ax.set_ylim(0, Psyche.m0 * 1.1)
-
-
-def plot_phasing(ax, result):
-    """Phase angle geometry at departure."""
-    r1 = Earth.a_sun
-    r2 = Mars.a_sun
-
-    # Transfer time
-    tof = result.tof
-
-    # Mars angular velocity (circular)
-    n_mars = np.sqrt(Sun.mu / r2**3)
-
-    # Mars sweeps this angle during transfer
-    mars_sweep = n_mars * tof
-
-    # Phase angle: Mars must be ahead of Earth by this much at departure
-    phase_angle = np.pi - mars_sweep  # target is 180 deg minus what Mars travels
-    phase_angle_deg = np.degrees(phase_angle)
-
-    theta = np.linspace(0, 2 * np.pi, 300)
-
-    # Earth and Mars orbits
-    ax.plot(r1 * np.cos(theta) / AU, r1 * np.sin(theta) / AU, 'b-', lw=1, alpha=0.5)
-    ax.plot(r2 * np.cos(theta) / AU, r2 * np.sin(theta) / AU, 'r-', lw=1, alpha=0.5)
-
-    # Earth at departure (at 0 deg)
-    ax.plot(r1 / AU, 0, 'bo', ms=12, zorder=5)
-    ax.annotate('Earth\n(departure)', (r1 / AU, 0),
-                textcoords="offset points", xytext=(12, -15), fontsize=9, color='blue')
-
-    # Mars at departure (phase_angle ahead)
-    mars_x = r2 * np.cos(phase_angle) / AU
-    mars_y = r2 * np.sin(phase_angle) / AU
-    ax.plot(mars_x, mars_y, 'ro', ms=12, zorder=5)
-    ax.annotate('Mars\n(departure)', (mars_x, mars_y),
-                textcoords="offset points", xytext=(12, 5), fontsize=9, color='red')
-
-    # Mars at arrival (at 180 deg)
-    ax.plot(-r2 / AU, 0, 'r^', ms=10, zorder=5, alpha=0.5)
-    ax.annotate('Mars\n(arrival)', (-r2 / AU, 0),
-                textcoords="offset points", xytext=(10, 10), fontsize=9, color='red', alpha=0.7)
-
-    # Phase angle arc
-    arc_r = 0.4
-    arc_theta = np.linspace(0, phase_angle, 50)
-    ax.plot(arc_r * np.cos(arc_theta), arc_r * np.sin(arc_theta), 'k-', lw=1.5)
-    mid_a = phase_angle / 2
-    ax.text(arc_r * 1.3 * np.cos(mid_a), arc_r * 1.3 * np.sin(mid_a),
-            f'φ = {phase_angle_deg:.1f}°', fontsize=10, ha='center', va='center')
-
-    # Sun
-    ax.plot(0, 0, 'yo', ms=10, zorder=5)
+    theta = np.linspace(0, 2 * np.pi, 200)
+    ax.plot(Earth.a_sun * np.cos(theta) / AU, Earth.a_sun * np.sin(theta) / AU,
+            np.zeros_like(theta), 'b-', lw=0.8, alpha=0.4)
+    ax.plot(Mars.a_sun * np.cos(theta) / AU, Mars.a_sun * np.sin(theta) / AU,
+            np.zeros_like(theta), 'r-', lw=0.8, alpha=0.4)
 
     ax.set_xlabel('x [AU]')
     ax.set_ylabel('y [AU]')
-    ax.set_title('Required Phase Angle at Departure')
-    ax.set_aspect('equal')
+    ax.set_zlabel('z [AU]')
+    ax.set_title('3D Transfer (1.85° plane change)')
+    ax.legend(fontsize=8)
+
+
+def plot_energy(ax, times, energies, result):
+    """Energy profile along transfer + parking orbit energies."""
+    ax.axhline(result.energy_transfer / 1e6, color='green', ls='-', lw=2,
+               label=f'ε_transfer = {result.energy_transfer:.3e} J/kg')
+
+    ax.axhline(result.energy_leo / 1e6, color='blue', ls='--', lw=1.5,
+               label=f'ε_LEO (Earth) = {result.energy_leo:.3e} J/kg')
+    ax.axhline(result.energy_mso / 1e6, color='red', ls='--', lw=1.5,
+               label=f'ε_MSO (Mars) = {result.energy_mso:.3e} J/kg')
+
+    ax.set_xlabel('Time [days]')
+    ax.set_ylabel('Specific energy [MJ/kg]')
+    ax.set_title('Orbital Energy States')
+    ax.legend(fontsize=7, loc='right')
     ax.grid(True, alpha=0.3)
 
 
-def plot_timeline(ax, result):
-    """Transfer timeline with key events."""
-    tof_days = result.tof / 86400
+def plot_velocity_radius(ax, times, states):
+    """Velocity and radius vs time during transfer."""
+    days = times / 86400.0
+    r = np.linalg.norm(states[:, :3], axis=1) / AU
+    v = np.linalg.norm(states[:, 3:], axis=1) / 1e3
 
-    # Synodic period for Earth-Mars
-    T_earth = 365.25  # days
-    T_mars = 687.0    # days
-    T_syn = 1 / abs(1 / T_earth - 1 / T_mars)
+    ax_r = ax
+    ax_v = ax.twinx()
 
-    events = {
-        'Departure\nburn': 0,
-        'Transfer\n(coast)': tof_days / 2,
-        'Arrival\nburn': tof_days,
-    }
+    ln1 = ax_r.plot(days, r, 'b-', lw=1.5, label='r [AU]')
+    ax_r.set_xlabel('Time [days]')
+    ax_r.set_ylabel('Heliocentric distance [AU]', color='blue')
+    ax_r.tick_params(axis='y', labelcolor='blue')
 
-    ax.set_xlim(-20, tof_days + 40)
-    ax.set_ylim(-0.5, 1.5)
+    ln2 = ax_v.plot(days, v, 'r-', lw=1.5, label='v [km/s]')
+    ax_v.set_ylabel('Speed [km/s]', color='red')
+    ax_v.tick_params(axis='y', labelcolor='red')
 
-    # Timeline bar
-    ax.barh(0.5, tof_days, left=0, height=0.3, color='seagreen', alpha=0.6)
+    lines = ln1 + ln2
+    labels = [l.get_label() for l in lines]
+    ax.legend(lines, labels, fontsize=8, loc='center right')
+    ax.set_title('Distance & Speed vs Time (HCI)')
+    ax.grid(True, alpha=0.3)
 
-    # Events
-    for label, t in events.items():
-        color = 'coral' if 'burn' in label else 'steelblue'
-        ax.plot(t, 0.5, 'o', color=color, ms=12, zorder=5)
-        ax.annotate(label, (t, 0.5), textcoords="offset points",
-                    xytext=(0, 25), ha='center', fontsize=9, fontweight='bold')
 
-    # Time labels
-    ax.text(0, 0.15, 'Day 0', ha='center', fontsize=8)
-    ax.text(tof_days, 0.15, f'Day {tof_days:.0f}', ha='center', fontsize=8)
-    ax.text(tof_days / 2, 0.15, f'{tof_days / 2:.0f} days', ha='center',
-            fontsize=8, color='gray')
+def plot_dv_budget(ax, result):
+    """Delta-v breakdown bar chart."""
+    labels = ['Δv₁\n(LEO escape)', 'Δv₂\n(MSO capture +\nplane change)']
+    dvs = [result.dv_depart / 1e3, result.dv_capture / 1e3]
+    colors = ['steelblue', 'coral']
 
-    # Summary text
-    summary = (
-        f'Transfer time: {tof_days:.1f} days ({tof_days / 30.44:.1f} months)\n'
-        f'Total Δv: {result.dv_total / 1e3:.2f} km/s\n'
-        f'(Δv₁ = {result.dv1 / 1e3:.2f} km/s,  Δv₂ = {result.dv2 / 1e3:.2f} km/s)\n'
-        f'Launch window recurrence: every {T_syn:.0f} days ({T_syn / 30.44:.0f} months)'
+    bars = ax.bar(labels, dvs, color=colors, width=0.5)
+    for bar, dv in zip(bars, dvs):
+        ax.text(bar.get_x() + bar.get_width() / 2, dv + 0.05,
+                f'{dv:.3f} km/s', ha='center', va='bottom', fontsize=10)
+
+    ax.axhline(result.dv_total / 1e3, color='gray', ls='--', lw=1,
+               label=f'Total Δv = {result.dv_total / 1e3:.3f} km/s')
+    ax.set_ylabel('Δv [km/s]')
+    ax.set_title('Delta-V Budget (2-impulse)')
+    ax.legend(fontsize=9)
+    ax.grid(True, axis='y', alpha=0.3)
+    ax.set_ylim(0, max(dvs) * 1.3)
+
+
+def plot_summary(ax, result):
+    """Text summary panel."""
+    ax.axis('off')
+    tof_days = result.tof / 86400.0
+    mp_chem = propellant_mass(result.dv_total, Psyche.m0, 320.0)
+    mp_elec = propellant_mass(result.dv_total, Psyche.m0, Psyche.Isp)
+
+    text = (
+        "Mission Parameters\n"
+        "─────────────────────────────\n"
+        f"LEO parking orbit:   400 km alt\n"
+        f"MSO parking orbit:   300 km alt\n"
+        f"Plane change:        1.85°\n"
+        "─────────────────────────────\n"
+        f"v∞ departure:  {result.v_inf_dep / 1e3:.3f} km/s\n"
+        f"v∞ arrival:    {result.v_inf_arr / 1e3:.3f} km/s\n"
+        "─────────────────────────────\n"
+        f"Δv₁ (escape):  {result.dv_depart / 1e3:.3f} km/s\n"
+        f"Δv₂ (capture): {result.dv_capture / 1e3:.3f} km/s\n"
+        f"Δv total:      {result.dv_total / 1e3:.3f} km/s\n"
+        "─────────────────────────────\n"
+        f"Transfer time: {tof_days:.1f} days\n"
+        "─────────────────────────────\n"
+        f"Psyche ({Psyche.m0:.0f} kg):\n"
+        f"  Chemical:  {mp_chem:.0f} kg ({100 * mp_chem / Psyche.m0:.0f}%)\n"
+        f"  SEP:       {mp_elec:.0f} kg ({100 * mp_elec / Psyche.m0:.0f}%)\n"
     )
-    ax.text(tof_days / 2, 1.2, summary, ha='center', va='center', fontsize=9,
+    ax.text(0.05, 0.95, text, transform=ax.transAxes,
+            fontsize=10, verticalalignment='top', fontfamily='monospace',
             bbox=dict(boxstyle='round,pad=0.5', facecolor='lightyellow', alpha=0.8))
-
-    ax.set_xlabel('Time [days]')
-    ax.set_yticks([])
-    ax.set_title('Transfer Timeline')
-    ax.grid(True, axis='x', alpha=0.3)
 
 
 def main():
-    result = hohmann(Earth.a_sun, Mars.a_sun, Sun.mu)
-
-    fig, axes = plt.subplots(2, 3, figsize=(18, 11))
-    fig.suptitle('Hohmann Transfer: Earth → Mars', fontsize=16, fontweight='bold', y=0.98)
-
-    plot_transfer_orbit(axes[0, 0], result)
-    plot_velocity(axes[0, 1], result)
-    plot_propellant(axes[0, 2], result)
-    plot_phasing(axes[1, 0], result)
-    plot_timeline(axes[1, 1], result)
-
-    # Hide the unused subplot, use for text summary
-    ax_summary = axes[1, 2]
-    ax_summary.axis('off')
-    tof_days = result.tof / 86400
-    Isp_chem = 320.0
-    mp_chem = propellant_mass(result.dv_total, Psyche.m0, Isp_chem)
-    mp_elec = propellant_mass(result.dv_total, Psyche.m0, Psyche.Isp)
-    summary_text = (
-        "Mission Summary\n"
-        "─────────────────────────\n"
-        f"Departure orbit:  {Earth.a_sun / AU:.3f} AU\n"
-        f"Arrival orbit:    {Mars.a_sun / AU:.3f} AU\n"
-        f"Transfer SMA:     {result.a_transfer / AU:.3f} AU\n"
-        "─────────────────────────\n"
-        f"Δv₁ (departure):  {result.dv1:.1f} m/s\n"
-        f"Δv₂ (arrival):    {result.dv2:.1f} m/s\n"
-        f"Δv total:         {result.dv_total:.1f} m/s\n"
-        "─────────────────────────\n"
-        f"Transfer time:    {tof_days:.1f} days\n"
-        f"                  ({tof_days / 30.44:.1f} months)\n"
-        "─────────────────────────\n"
-        f"Spacecraft:       Psyche ({Psyche.m0:.0f} kg)\n"
-        f"Chemical fuel:    {mp_chem:.0f} kg ({100 * mp_chem / Psyche.m0:.0f}%)\n"
-        f"SEP fuel:         {mp_elec:.0f} kg ({100 * mp_elec / Psyche.m0:.0f}%)\n"
-        f"Savings:          {mp_chem - mp_elec:.0f} kg ({100 * (mp_chem - mp_elec) / mp_chem:.0f}%)\n"
+    result = hohmann_transfer(
+        r1=Earth.a_sun,
+        r2=Mars.a_sun,
+        mu_sun=Sun.mu,
+        mu_earth=Earth.mu,
+        mu_mars=Mars.mu,
+        R_earth=Earth.r,
+        R_mars=Mars.r,
+        alt_leo_km=400.0,
+        alt_mso_km=300.0,
+        delta_i_deg=1.85,
     )
-    ax_summary.text(0.1, 0.95, summary_text, transform=ax_summary.transAxes,
-                    fontsize=11, verticalalignment='top', fontfamily='monospace',
-                    bbox=dict(boxstyle='round,pad=0.5', facecolor='lightyellow', alpha=0.8))
 
-    plt.tight_layout(rect=[0, 0, 1, 0.95])
+    times, states, energies = propagate_hci(result.state_dep, Sun.mu, result.tof, n_points=500)
+
+    fig = plt.figure(figsize=(18, 11))
+    fig.suptitle('Hohmann Transfer: Earth → Mars\n'
+                 '2-impulse, 1.85° plane change, 400 km LEO → 300 km MSO, HCI frame',
+                 fontsize=14, fontweight='bold', y=0.98)
+
+    ax1 = fig.add_subplot(2, 3, 1)
+    plot_transfer_orbit(ax1, result, states)
+
+    ax2 = fig.add_subplot(2, 3, 2, projection='3d')
+    plot_3d_transfer(ax2, states)
+
+    ax3 = fig.add_subplot(2, 3, 3)
+    plot_dv_budget(ax3, result)
+
+    ax4 = fig.add_subplot(2, 3, 4)
+    plot_velocity_radius(ax4, times, states)
+
+    ax5 = fig.add_subplot(2, 3, 5)
+    plot_energy(ax5, times, energies, result)
+
+    ax6 = fig.add_subplot(2, 3, 6)
+    plot_summary(ax6, result)
+
+    plt.tight_layout(rect=[0, 0, 1, 0.93])
 
     out_dir = ROOT / "plots"
     out_dir.mkdir(exist_ok=True)
