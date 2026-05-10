@@ -79,8 +79,8 @@ print(f"Non-dim: T_max={T_max_nd:.4e} m_dry={m_dry_nd:.4f} v_ex={v_ex_nd:.4f}")
 
 qlaw = np.load(os.path.join(_script_dir, "best_transfer.npz"))
 ts_q = qlaw["ts"]
-sol_q = qlaw["sol"]      # (7, 3590)
-u_q = qlaw["u"]         # (22740, 3) RTN thrust [N]
+sol_q = qlaw["sol"]      # (7, N_qlaw)
+u_q = qlaw["uhist"]      # (N_u, 3) RTN thrust [N]
 
 t0_s = ts_q[0]
 tf_s = ts_q[-1]

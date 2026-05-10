@@ -46,7 +46,7 @@ v_ex_nd = (ISP * G0) / VU
 qlaw = np.load(os.path.join(_script_dir, "best_transfer.npz"))
 ts_q = qlaw["ts"]
 sol_q = qlaw["sol"]
-u_q = qlaw["u"]
+u_q = qlaw["uhist"]
 
 t0_s = ts_q[0]
 tf_s = ts_q[-1]
