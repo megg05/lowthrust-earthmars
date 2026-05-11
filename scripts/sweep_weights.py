@@ -7,6 +7,7 @@ import os
 import numpy as np
 import casadi as ca
 import matplotlib.pyplot as plt
+from matplotlib.gridspec import GridSpec
 
 _script_dir = os.path.dirname(os.path.abspath(__file__))
 
@@ -236,64 +237,76 @@ for w1, w2 in weight_pairs:
 # PLOT
 # =============================================================================
 
-fig, axes = plt.subplots(2, 3, figsize=(16, 10))
+# Color scheme for 6 cases
+colors = ['#1f77b4', '#ff7f0e', '#2ca02c', '#d62728', '#9467bd', '#8c564b']
 
-# --- Row 1: XY trajectory for each case ---
+# --- Figure 1: All trajectories on one plot ---
+fig1, ax1 = plt.subplots(1, 1, figsize=(10, 8))
+
 for idx, res in enumerate(results):
-    ax = axes[0, idx] if idx < 3 else axes[1, idx - 3]
     x_au = res["x"][:, 0:2] / AU
-    ax.plot(x_au[:, 0], x_au[:, 1], "c-", linewidth=1.5, label="Trajectory")
-    ax.plot(x_au[0, 0], x_au[0, 1], "bo", markersize=8, label="Earth dep")
-    ax.plot(x_au[-1, 0], x_au[-1, 1], "ro", markersize=8, label="Mars arr")
-    ax.plot(0, 0, "y*", markersize=15)
-    ax.set_aspect("equal")
-    ax.set_xlabel("X [AU]")
-    ax.set_ylabel("Y [AU]")
-    ax.set_title(f"W1={res['w1']:.1f}, W2={res['w2']:.1f}\n"
-                 f"TOF={res['tf_days']:.0f}d, Δm={res['propellant']:.0f}kg",
-                 fontsize=10)
-    ax.grid(True, alpha=0.3)
-    ax.set_xlim(-2.0, 1.5)
-    ax.set_ylim(-1.5, 1.5)
+    label = f"({res['w1']:.1f},{res['w2']:.1f}), {res['tf_days']:.0f}d"
+    ax1.plot(x_au[:, 0], x_au[:, 1], "-", color=colors[idx],
+             linewidth=2.0, label=label, alpha=0.8)
+
+# Mark start/end points (same for all)
+x_au_0 = results[0]["x"][:, 0:2] / AU
+ax1.plot(x_au_0[0, 0], x_au_0[0, 1], "bo", markersize=10, label="Earth dep", zorder=10)
+ax1.plot(x_au_0[-1, 0], x_au_0[-1, 1], "ro", markersize=10, label="Mars arr", zorder=10)
+ax1.plot(0, 0, "y*", markersize=18, label="Sun", zorder=10)
+
+ax1.set_aspect("equal")
+ax1.set_xlabel("X [AU]", fontsize=12)
+ax1.set_ylabel("Y [AU]", fontsize=12)
+ax1.set_title("Trajectory Comparison: All Weight Combinations", fontsize=14)
+ax1.grid(True, alpha=0.3)
+ax1.set_xlim(-2.0, 1.5)
+ax1.set_ylim(-1.5, 1.5)
+ax1.legend(fontsize=9, loc='upper right', title="(W1,W2), TOF")
 
 plt.tight_layout()
 plt.savefig(os.path.join(_script_dir, "sweep_trajectories.png"), dpi=150)
 print(f"\nSaved: sweep_trajectories.png")
 
-# --- Figure 2: Thrust profiles ---
-fig2, axes2 = plt.subplots(2, 3, figsize=(16, 10))
+# --- Figure 2: All thrust profiles on one plot ---
+fig2, ax2 = plt.subplots(1, 1, figsize=(12, 6))
 
 for idx, res in enumerate(results):
-    ax = axes2[0, idx] if idx < 3 else axes2[1, idx - 3]
     t_days = res["t"] / 86400
-    ax.plot(t_days, res["T_mag"], "m-", linewidth=1.0)
-    ax.axhline(T_MAX, color="r", linestyle="--", alpha=0.5, label=f"T_max={T_MAX} N")
-    ax.set_xlabel("Time [days]")
-    ax.set_ylabel("Thrust [N]")
-    ax.set_title(f"W1={res['w1']:.1f}, W2={res['w2']:.1f}", fontsize=10)
-    ax.set_ylim(-0.05, T_MAX * 1.1)
-    ax.grid(True, alpha=0.3)
-    ax.legend(fontsize=8)
+    label = f"({res['w1']:.1f},{res['w2']:.1f})"
+    ax2.plot(t_days, res["T_mag"], "-", color=colors[idx],
+             linewidth=1.5, label=label, alpha=0.8)
+
+ax2.axhline(T_MAX, color="k", linestyle="--", linewidth=1.5,
+            alpha=0.5, label=f"T_max={T_MAX} N")
+ax2.set_xlabel("Time [days]", fontsize=12)
+ax2.set_ylabel("Thrust [N]", fontsize=12)
+ax2.set_title("Thrust Profile Comparison", fontsize=14)
+ax2.set_ylim(-0.05, T_MAX * 1.15)
+ax2.grid(True, alpha=0.3)
+ax2.legend(fontsize=10, loc='upper right', title="(W1,W2)")
 
 plt.tight_layout()
 plt.savefig(os.path.join(_script_dir, "sweep_thrust.png"), dpi=150)
 print(f"Saved: sweep_thrust.png")
 
-# --- Figure 3: Mass profiles ---
-fig3, axes3 = plt.subplots(2, 3, figsize=(16, 10))
+# --- Figure 3: All mass profiles on one plot ---
+fig3, ax3 = plt.subplots(1, 1, figsize=(12, 6))
 
 for idx, res in enumerate(results):
-    ax = axes3[0, idx] if idx < 3 else axes3[1, idx - 3]
     t_days = res["t"] / 86400
-    ax.plot(t_days, res["x"][:, 6], "g-", linewidth=1.5)
-    ax.axhline(M_DRY, color="r", linestyle="--", alpha=0.5, label=f"m_dry={M_DRY} kg")
-    ax.set_xlabel("Time [days]")
-    ax.set_ylabel("Mass [kg]")
-    ax.set_title(f"W1={res['w1']:.1f}, W2={res['w2']:.1f}\n"
-                 f"m_f={res['m_final']:.0f} kg", fontsize=10)
-    ax.set_ylim(M_DRY - 100, M_WET + 100)
-    ax.grid(True, alpha=0.3)
-    ax.legend(fontsize=8)
+    label = f"({res['w1']:.1f},{res['w2']:.1f}), m_f={res['m_final']:.0f}kg"
+    ax3.plot(t_days, res["x"][:, 6], "-", color=colors[idx],
+             linewidth=2.0, label=label, alpha=0.8)
+
+ax3.axhline(M_DRY, color="k", linestyle="--", linewidth=1.5,
+            alpha=0.5, label=f"m_dry={M_DRY} kg")
+ax3.set_xlabel("Time [days]", fontsize=12)
+ax3.set_ylabel("Mass [kg]", fontsize=12)
+ax3.set_title("Mass Profile Comparison", fontsize=14)
+ax3.set_ylim(M_DRY - 200, M_WET + 200)
+ax3.grid(True, alpha=0.3)
+ax3.legend(fontsize=9, loc='upper right', title="(W1,W2), Final mass")
 
 plt.tight_layout()
 plt.savefig(os.path.join(_script_dir, "sweep_mass.png"), dpi=150)
@@ -318,6 +331,86 @@ ax4.grid(True, alpha=0.3)
 plt.tight_layout()
 plt.savefig(os.path.join(_script_dir, "sweep_pareto.png"), dpi=150)
 print(f"Saved: sweep_pareto.png")
+
+# --- Combined figure with all 4 plots ---
+fig_combined = plt.figure(figsize=(18, 13))
+gs = GridSpec(2, 2, figure=fig_combined, hspace=0.25, wspace=0.22,
+              left=0.07, right=0.98, top=0.94, bottom=0.06)
+
+# (a) Mass profiles
+ax1 = fig_combined.add_subplot(gs[0, 0])
+for idx, r in enumerate(results):
+    t_days = r["t"] / 86400
+    mass = r["x"][:, 6]
+    mf = r["m_final"]
+    ax1.plot(t_days, mass, color=colors[idx], linewidth=2.5,
+            label=f"({r['w1']:.1f},{r['w2']:.1f}), $m_f$={mf:.0f}kg")
+ax1.axhline(M_DRY, color='gray', linestyle='--', linewidth=2, label=f'$m_{{dry}}$={M_DRY:.0f} kg')
+ax1.set_xlabel('Time [days]', fontsize=13, fontweight='bold')
+ax1.set_ylabel('Mass [kg]', fontsize=13, fontweight='bold')
+ax1.set_title('(a) Mass Profile Comparison', fontsize=14, fontweight='bold', pad=12)
+ax1.legend(fontsize=10, loc='upper right', framealpha=0.95)
+ax1.grid(True, alpha=0.3, linewidth=0.8)
+ax1.tick_params(labelsize=11)
+
+# (b) Thrust profiles
+ax2 = fig_combined.add_subplot(gs[0, 1])
+for idx, r in enumerate(results):
+    t_days = r["t"] / 86400
+    thrust = r["T_mag"]
+    ax2.plot(t_days, thrust, color=colors[idx], linewidth=2.5,
+            label=f"({r['w1']:.1f},{r['w2']:.1f})")
+ax2.axhline(T_MAX, color='gray', linestyle='--', linewidth=2, label=f'$T_{{max}}$={T_MAX:.2f} N')
+ax2.set_xlabel('Time [days]', fontsize=13, fontweight='bold')
+ax2.set_ylabel('Thrust [N]', fontsize=13, fontweight='bold')
+ax2.set_title('(b) Thrust Profile Comparison', fontsize=14, fontweight='bold', pad=12)
+ax2.legend(fontsize=10, loc='upper right', framealpha=0.95)
+ax2.grid(True, alpha=0.3, linewidth=0.8)
+ax2.set_ylim([-0.05, 1.25])
+ax2.tick_params(labelsize=11)
+
+# (c) Trajectories
+ax3 = fig_combined.add_subplot(gs[1, 0])
+for idx, r in enumerate(results):
+    x = r["x"][:, 0] / AU
+    y = r["x"][:, 1] / AU
+    tof = r["tf_days"]
+    ax3.plot(x, y, color=colors[idx], linewidth=2.5,
+            label=f"({r['w1']:.1f},{r['w2']:.1f}), {tof:.0f}d")
+ax3.plot(1.0, 0.0, 'o', color='blue', markersize=12, label='Earth', zorder=10)
+ax3.plot(0, 0, '*', color='gold', markersize=24, markeredgecolor='orange',
+        markeredgewidth=2, label='Sun', zorder=10)
+ax3.set_xlabel('X [AU]', fontsize=13, fontweight='bold')
+ax3.set_ylabel('Y [AU]', fontsize=13, fontweight='bold')
+ax3.set_title('(c) Trajectory Comparison', fontsize=14, fontweight='bold', pad=12)
+ax3.legend(fontsize=10, loc='upper left', framealpha=0.95)
+ax3.grid(True, alpha=0.3, linewidth=0.8)
+ax3.set_aspect('equal')
+ax3.set_xlim([-2.0, 1.8])
+ax3.set_ylim([-1.5, 1.8])
+ax3.tick_params(labelsize=11)
+
+# (d) Pareto front
+ax4 = fig_combined.add_subplot(gs[1, 1])
+tof_vals = [r["tf_days"] for r in results]
+fuel_vals = [r["propellant"] for r in results]
+pareto_labels = [f"({r['w1']:.1f},{r['w2']:.1f})" for r in results]
+ax4.plot(tof_vals, fuel_vals, 'o-', color='black', linewidth=3,
+        markersize=12, markerfacecolor='white', markeredgewidth=2.5)
+for i, label in enumerate(pareto_labels):
+    ax4.annotate(label, (tof_vals[i], fuel_vals[i]),
+                textcoords="offset points", xytext=(10,-10),
+                fontsize=11, fontweight='bold')
+ax4.set_xlabel('Transfer Time [days]', fontsize=13, fontweight='bold')
+ax4.set_ylabel('Propellant Consumed [kg]', fontsize=13, fontweight='bold')
+ax4.set_title('(d) Pareto Front: Fuel vs Time', fontsize=14, fontweight='bold', pad=12)
+ax4.grid(True, alpha=0.3, linewidth=0.8)
+ax4.tick_params(labelsize=11)
+
+fig_combined.suptitle('Objective Weight Analysis: (W1, W2) Tradeoff Study',
+                     fontsize=16, fontweight='bold')
+plt.savefig(os.path.join(_script_dir, "sweep_combined.png"), dpi=200, bbox_inches='tight')
+print(f"Saved: sweep_combined.png")
 
 # --- Summary table ---
 print(f"\n{'='*70}")
