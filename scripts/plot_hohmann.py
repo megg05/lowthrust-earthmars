@@ -139,7 +139,6 @@ def plot_summary(ax, result):
     ax.axis('off')
     tof_days = result.tof / 86400.0
     mp_chem = propellant_mass(result.dv_total, Psyche.m0, 320.0)
-    mp_elec = propellant_mass(result.dv_total, Psyche.m0, Psyche.Isp)
 
     text = (
         "Mission Parameters\n"
@@ -157,9 +156,8 @@ def plot_summary(ax, result):
         "─────────────────────────────\n"
         f"Transfer time: {tof_days:.1f} days\n"
         "─────────────────────────────\n"
-        f"Psyche ({Psyche.m0:.0f} kg):\n"
-        f"  Chemical:  {mp_chem:.0f} kg ({100 * mp_chem / Psyche.m0:.0f}%)\n"
-        f"  SEP:       {mp_elec:.0f} kg ({100 * mp_elec / Psyche.m0:.0f}%)\n"
+        f"Propellant (Chemical, Isp=320s):\n"
+        f"  {mp_chem:.0f} kg ({100 * mp_chem / Psyche.m0:.0f}% of {Psyche.m0:.0f} kg)\n"
     )
     ax.text(0.05, 0.95, text, transform=ax.transAxes,
             fontsize=10, verticalalignment='top', fontfamily='monospace',
